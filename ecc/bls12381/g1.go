@@ -198,7 +198,7 @@ func (g *G1) isValidProjective() bool { return (g.x.IsZero() & g.y.IsZero() & g.
 func (g *G1) IsOnG1() bool { return g.isValidProjective() && g.isOnCurve() && g.isRTorsion() }
 
 // IsOnG1Insecure returns true if the point is on the curve and projective
-func (g *G1) IsOnG1() bool { return g.isValidProjective() && g.isOnCurve() }
+func (g *G1) IsOnG1Insecure() bool { return g.isValidProjective() && g.isOnCurve() }
 
 // IsIdentity return true if the point is the identity of G1.
 func (g *G1) IsIdentity() bool { return g.isValidProjective() && (g.z.IsZero() == 1) }
