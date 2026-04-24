@@ -1,6 +1,6 @@
-module github.com/wbl/circl-experiments-insecure
+module github.com/cloudflare/circl
 
-go 1.24.0
+go 1.23
 
 require (
 	github.com/bwesterb/go-ristretto v1.2.3
