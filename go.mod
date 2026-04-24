@@ -1,4 +1,4 @@
-module github.com/cloudflare/circl
+module github.com/wbl/circl-experiments-insecure
 
 go 1.23
 
