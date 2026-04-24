@@ -91,6 +91,69 @@ func (g *G1) SetBytes(b []byte) error {
 	return nil
 }
 
+// SetBytesInsecure sets g to the value in bytes, and returns a non-nil error if not in G1.
+func (g *G1) SetBytesInsecure(b []byte) error {
+	if len(b) < G1SizeCompressed {
+		return errInputLength
+	}
+
+	// Check for invalid prefixes
+	switch b[0] & 0xE0 {
+	case 0x20, 0x60, 0xE0:
+		return errEncoding
+	}
+
+	isCompressed := int((b[0] >> 7) & 0x1)
+	isInfinity := int((b[0] >> 6) & 0x1)
+	isBigYCoord := int((b[0] >> 5) & 0x1)
+
+	if isInfinity == 1 {
+		l := G1Size
+		if isCompressed == 1 {
+			l = G1SizeCompressed
+		}
+		zeros := make([]byte, l-1)
+		if (b[0]&0x1F) != 0 || subtle.ConstantTimeCompare(b[1:l], zeros) != 1 {
+			return errEncoding
+		}
+		g.SetIdentity()
+		return nil
+	}
+
+	x := (&[ff.FpSize]byte{})[:]
+	copy(x, b)
+	x[0] &= 0x1F
+	if err := g.x.UnmarshalBinary(x); err != nil {
+		return err
+	}
+
+	if isCompressed == 1 {
+		x3b := &ff.Fp{}
+		x3b.Sqr(&g.x)
+		x3b.Mul(x3b, &g.x)
+		x3b.Add(x3b, &g1Params.b)
+		if g.y.Sqrt(x3b) == 0 {
+			return errEncoding
+		}
+		if g.y.IsNegative() != isBigYCoord {
+			g.y.Neg()
+		}
+	} else {
+		if len(b) < G1Size {
+			return errInputLength
+		}
+		if err := g.y.UnmarshalBinary(b[ff.FpSize:G1Size]); err != nil {
+			return err
+		}
+	}
+
+	g.z.SetOne()
+	if !g.IsOnG1Insecure() {
+		return errEncoding
+	}
+	return nil
+}
+
 func (g G1) encodeBytes(compressed bool) []byte {
 	g.toAffine()
 
@@ -133,6 +196,9 @@ func (g *G1) isValidProjective() bool { return (g.x.IsZero() & g.y.IsZero() & g.
 
 // IsOnG1 returns true if the point is in the group G1.
 func (g *G1) IsOnG1() bool { return g.isValidProjective() && g.isOnCurve() && g.isRTorsion() }
+
+// IsOnG1Insecure returns true if the point is on the curve and projective
+func (g *G1) IsOnG1() bool { return g.isValidProjective() && g.isOnCurve() }
 
 // IsIdentity return true if the point is the identity of G1.
 func (g *G1) IsIdentity() bool { return g.isValidProjective() && (g.z.IsZero() == 1) }
